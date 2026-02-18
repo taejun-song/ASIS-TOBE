@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RuleProposal",
+  "description": "LLM-generated transformation rules for converting vendor MAP files to ASEKR standard format",
+  "type": "object",
+  "required": ["detected_format", "header_rules", "metadata_extraction", "map_parsing", "bin_mapping", "confidence", "evidence"],
+  "properties": {
+    "detected_format": {
+      "type": "object",
+      "required": ["encoding", "delimiter", "fixed_width", "format_type"],
+      "properties": {
+        "encoding": { "type": "string", "description": "File encoding (e.g., utf-8, cp949)" },
+        "delimiter": { "type": ["string", "null"], "description": "Column delimiter or null for grid/fixed-width" },
+        "fixed_width": { "type": "boolean" },
+        "format_type": { "type": "string", "description": "e.g., grid_character_map, coordinate_xy_b, structured_kv_with_grid" }
+      }
+    },
+    "header_rules": {
+      "type": "object",
+      "required": ["lines_to_skip", "detection_reason"],
+      "properties": {
+        "lines_to_skip": { "type": "integer", "minimum": 0 },
+        "detection_reason": { "type": "string" }
+      }
+    },
+    "metadata_extraction": {
+      "type": "object",
+      "required": ["lot_id", "wafer_no"],
+      "properties": {
+        "lot_id": { "$ref": "#/$defs/field_extraction" },
+        "wafer_no": { "$ref": "#/$defs/field_extraction" },
+        "customer": { "oneOf": [{ "$ref": "#/$defs/field_extraction" }, { "type": "null" }] },
+        "supplier": { "oneOf": [{ "$ref": "#/$defs/field_extraction" }, { "type": "null" }] },
+        "wafer_id": { "oneOf": [{ "$ref": "#/$defs/field_extraction" }, { "type": "null" }] },
+        "notch": { "oneOf": [{ "$ref": "#/$defs/field_extraction" }, { "type": "null" }] },
+        "row_count": { "oneOf": [{ "$ref": "#/$defs/field_extraction" }, { "type": "null" }] },
+        "column_count": { "oneOf": [{ "$ref": "#/$defs/field_extraction" }, { "type": "null" }] },
+        "good_bin_code": { "oneOf": [{ "$ref": "#/$defs/field_extraction" }, { "type": "null" }] },
+        "good_die_count": { "oneOf": [{ "$ref": "#/$defs/field_extraction" }, { "type": "null" }] }
+      }
+    },
+    "map_parsing": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "enum": ["grid_character", "coordinate_records", "structured_grid"] },
+        "grid_start_line": { "type": ["integer", "null"] },
+        "grid_end_line": { "type": ["integer", "null"] },
+        "coordinate_pattern": { "type": ["string", "null"], "description": "Regex for parsing coordinate lines (e.g., X/Y/B)" },
+        "null_character": { "type": "string", "default": ".", "description": "Character representing empty/no-die positions" }
+      }
+    },
+    "bin_mapping": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source_code", "output_char", "meaning", "is_pass"],
+        "properties": {
+          "source_code": { "type": "string" },
+          "output_char": { "type": "string", "maxLength": 1 },
+          "meaning": { "type": "string" },
+          "is_pass": { "type": "boolean" }
+        }
+      }
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+      "description": "Per-field confidence scores"
+    },
+    "candidates": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "$ref": "#/$defs/field_extraction" }
+      },
+      "description": "Alternative mappings for uncertain fields"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["line_number", "content", "relevance"],
+        "properties": {
+          "line_number": { "type": "integer" },
+          "content": { "type": "string" },
+          "relevance": { "type": "string" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "field_extraction": {
+      "type": "object",
+      "required": ["source", "pattern", "example_value"],
+      "properties": {
+        "source": { "type": "string", "description": "Where to extract from (e.g., header_line_3, filename, coordinate_field)" },
+        "pattern": { "type": "string", "description": "Regex or key name for extraction" },
+        "example_value": { "type": "string", "description": "Example extracted value" }
+      }
+    }
+  }
+}
